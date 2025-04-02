@@ -6,13 +6,13 @@ import (
 	"strconv"
 )
 
+var charMap = map[rune]rune{')': '(', '}': '{', ']': '['}
+
 func FibonacciIterative(n int) int {
 	// Функція вираховує і повертає n-не число Фібоначчі
 	// Імплементація без використання рекурсії
-	if n == 0 {
-		return 0
-	} else if n == 1 {
-		return 1
+	if n < 2 {
+		return n
 	}
 	a := 0
 	b := 1
@@ -59,7 +59,7 @@ func IsBinaryPalindrome(n int) bool {
 	// Число 7 (111) - паліндром, повертаємо `true`
 	// Число 5 (101) - паліндром, повертаємо `true`
 	// Число 6 (110) - не є паліндромом, повертаємо `false`
-	binaryRepresentation := fmt.Sprintf("%b", n)
+	binaryRepresentation := strconv.FormatInt(int64(n), 2)
 	length := len(binaryRepresentation)
 	for i := 0; i < length/2; i++ {
 		if binaryRepresentation[i] != binaryRepresentation[length-i-1] {
@@ -79,7 +79,6 @@ func ValidParentheses(s string) bool {
 	//    "[{]}" - не правильно
 	// 4. Кожна закриваюча дужка має відповідну що відкриває дужку
 	stack := make([]rune, 0)
-	charMap := map[rune]rune{')': '(', '}': '{', ']': '['}
 	for _, char := range s {
 		if char == '(' || char == '{' || char == '[' {
 			stack = append(stack, char)
@@ -101,7 +100,11 @@ func Increment(num string) int {
 	// Функція на вхід отримує стрічку яка складається лише з символів `0` та `1`
 	// Тобто стрічка містить певне число у бінарному вигляді
 	// Потрібно повернути число на один більше
-	inputInt, _ := strconv.ParseInt(num, 2, 64)
+	inputInt, err := strconv.ParseInt(num, 2, 64)
+	if err != nil {
+		fmt.Printf("Invalid number %v\n", num)
+		return 0
+	}
 	outputInt := inputInt + 1
 	return int(outputInt)
 }

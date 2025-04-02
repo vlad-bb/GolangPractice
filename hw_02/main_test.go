@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"strconv"
+	"testing"
+)
 
 func BenchmarkFibonacciIterative(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -35,5 +39,17 @@ func BenchmarkValidParentheses(b *testing.B) {
 func BenchmarkIncrement(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Increment("111")
+	}
+}
+
+func BenchmarkSprintf(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		fmt.Sprintf("%b", 8)
+	}
+}
+
+func BenchmarkFormatInt(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		strconv.FormatInt(int64(8), 2)
 	}
 }
