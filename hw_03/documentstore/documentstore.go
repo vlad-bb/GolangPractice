@@ -57,6 +57,3 @@ func Put(doc Document) {
 //		// Повертаємо список усіх документів
 //		// TODO: Implement
 //	}
-func main() {
-	fmt.Println(documents)
-}
