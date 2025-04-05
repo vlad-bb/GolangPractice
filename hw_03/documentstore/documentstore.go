@@ -39,21 +39,35 @@ func Put(doc Document) {
 	documents[field.Value.(string)] = doc
 }
 
-//	func Get(key string) (*Document, bool) {
-//		// Потрібно повернути документ по ключу
-//		// Якщо документ знайдено, повертаємо `true` та поінтер на документ
-//		// Інакше повертаємо `false` та `nil`
-//		// TODO: Implement
-//	}
-//
-//	func Delete(key string) bool {
-//		// Видаляємо документа по ключу.
-//		// Повертаємо `true` якщо ми знайшли і видалили документі
-//		// Повертаємо `false` якщо документ не знайдено
-//		// TODO: Implement
-//	}
-//
-//	func List() []Document {
-//		// Повертаємо список усіх документів
-//		// TODO: Implement
-//	}
+func Get(key string) (*Document, bool) {
+	// Потрібно повернути документ по ключу
+	// Якщо документ знайдено, повертаємо `true` та поінтер на документ
+	// Інакше повертаємо `false` та `nil`
+	doc, ok := documents[key]
+	if !ok {
+		return nil, false
+	}
+	return &doc, true
+}
+
+func Delete(key string) bool {
+	// Видаляємо документа по ключу.
+	// Повертаємо `true` якщо ми знайшли і видалили документові
+	// Повертаємо `false` якщо документ не знайдено
+	_, ok := Get(key)
+	if ok {
+		delete(documents, key)
+		return true
+	} else {
+		return false
+	}
+}
+
+func List() []Document {
+	// Повертаємо список усіх документів
+	docs := make([]Document, 0, len(documents))
+	for _, doc := range documents {
+		docs = append(docs, doc)
+	}
+	return docs
+}
