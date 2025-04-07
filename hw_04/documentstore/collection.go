@@ -24,7 +24,14 @@ func (s *Collection) Put(doc Document) {
 		fmt.Printf("Invalid  key %v, should be 'string'\n", pkField.Type)
 		return
 	}
-	s.documents[pkField.Value.(string)] = doc
+	key, ok := pkField.Value.(string)
+	if !ok {
+		fmt.Printf("Invalid key %v, should be 'string'\n", pkField.Value)
+	}
+	if key == "" {
+		fmt.Printf("Invalid key %v\n", pkField.Value)
+	}
+	s.documents[key] = doc
 }
 
 func (s *Collection) Get(key string) (*Document, bool) {
