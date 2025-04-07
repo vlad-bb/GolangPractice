@@ -36,7 +36,17 @@ func Put(doc Document) {
 		fmt.Printf("Invalid  key %v, should be 'string'\n", field.Type)
 		return
 	}
-	documents[field.Value.(string)] = doc
+	key, ok := field.Value.(string)
+	if !ok {
+		fmt.Println("field type is not a string")
+		return
+	}
+	if key == "" {
+		fmt.Println("that key shouldn't be empty")
+		return
+	}
+
+	documents[key] = doc
 }
 
 func Get(key string) (*Document, bool) {
