@@ -8,6 +8,7 @@ import (
 func main() {
 	store := documentstore.NewStore() // create store
 	fmt.Printf("New store created %v\n", store)
+
 	cfg := &documentstore.CollectionConfig{
 		PrimaryKey: "pk",
 	}
@@ -125,7 +126,7 @@ func main() {
 
 	user, ok := usersCollection.Get("1") // success case
 	if ok {
-		fmt.Printf("User found %v\n", user1)
+		fmt.Printf("User found %v\n", user)
 	} else {
 		fmt.Println("User not found")
 	}

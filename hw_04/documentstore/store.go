@@ -5,10 +5,10 @@ type Store struct {
 }
 
 func NewStore() *Store {
-	store := Store{
+	return &Store{
 		storage: make(map[string]Collection),
 	}
-	return &store
+
 }
 
 func (s *Store) CreateCollection(name string, cfg *CollectionConfig) (bool, *Collection) {
@@ -17,14 +17,15 @@ func (s *Store) CreateCollection(name string, cfg *CollectionConfig) (bool, *Col
 	_, ok := s.storage[name]
 	if ok {
 		return false, nil
-	} else {
-		collection := Collection{
-			cfg:       *cfg,
-			documents: make(map[string]Document),
-		}
-		s.storage[name] = collection
-		return true, &collection
 	}
+	collection := Collection{
+		cfg:       *cfg,
+		documents: make(map[string]Document),
+	}
+	s.storage[name] = collection
+
+	return true, &collection
+
 }
 
 func (s *Store) GetCollection(name string) (*Collection, bool) {
@@ -32,6 +33,7 @@ func (s *Store) GetCollection(name string) (*Collection, bool) {
 	if ok {
 		return &collection, true
 	}
+
 	return nil, false
 }
 
@@ -39,7 +41,9 @@ func (s *Store) DeleteCollection(name string) bool {
 	_, ok := s.storage[name]
 	if ok {
 		delete(s.storage, name)
+
 		return true
 	}
+
 	return false
 }

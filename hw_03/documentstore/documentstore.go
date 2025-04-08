@@ -26,8 +26,8 @@ var documents = map[string]Document{}
 func Put(doc Document) {
 	// 1. Перевірити що документ містить в мапі поле `key` типу `string`
 	// 2. Додати Document до локальної мапи з документами
-	field, err := doc.Fields["key"]
-	if err != true {
+	field, ok := doc.Fields["key"]
+	if ok != true {
 		fmt.Printf("Not any keys")
 		return
 	}
