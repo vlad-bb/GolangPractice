@@ -26,8 +26,8 @@ var documents = map[string]Document{}
 func Put(doc Document) {
 	// 1. Перевірити що документ містить в мапі поле `key` типу `string`
 	// 2. Додати Document до локальної мапи з документами
-	field, err := doc.Fields["key"]
-	if err != true {
+	field, ok := doc.Fields["key"]
+	if ok != true {
 		fmt.Printf("Not any keys")
 		return
 	}
@@ -36,7 +36,17 @@ func Put(doc Document) {
 		fmt.Printf("Invalid  key %v, should be 'string'\n", field.Type)
 		return
 	}
-	documents[field.Value.(string)] = doc
+	key, ok := field.Value.(string)
+	if !ok {
+		fmt.Println("field type is not a string")
+		return
+	}
+	if key == "" {
+		fmt.Println("that key shouldn't be empty")
+		return
+	}
+
+	documents[key] = doc
 }
 
 //	func Get(key string) (*Document, bool) {
