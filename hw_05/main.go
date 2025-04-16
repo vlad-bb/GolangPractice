@@ -11,29 +11,16 @@ func main() {
 	store := document_store.NewStore()
 	fmt.Printf("New document_store created %v\n", store)
 
-	cfg := &document_store.CollectionConfig{
-		PrimaryKey: "id",
-	}
-
-	ok, usersCollection := store.CreateCollection("listUsers", cfg)
-	if !ok {
-		fmt.Printf("failed to create collection: %v", document_store.ErrCollectionAlreadyExists)
-	} else {
-		usersCollection, _ = store.GetCollection("listUsers")
-	}
-
-	userService := users.CreateService(*usersCollection)
+	userService := users.CreateService(*store, "id", "listUsers")
 
 	names := []string{"Bob", "Mary", "John"}
 	for i, name := range names {
-		payload := map[string]interface{}{"id": strconv.Itoa(i), "name": name}
-		_, err := userService.CreateUser(payload)
+		_, err := userService.CreateUser(strconv.Itoa(i), name)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
-	payload := map[string]interface{}{"id": "5", "name": "Vlad"}
-	_, err := userService.CreateUser(payload)
+	_, err := userService.CreateUser("5", "Vlad")
 
 	user, err := userService.GetUser("1")
 	if err != nil {
