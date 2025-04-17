@@ -1,0 +1,47 @@
+{
+    "storage": {
+        "listUsers": {
+            "cfg": {
+                "PrimaryKey": "id"
+            },
+            "documents": {
+                "0": {
+                    "Fields": {
+                        "id": {
+                            "Type": "string",
+                            "Value": "0"
+                        },
+                        "name": {
+                            "Type": "string",
+                            "Value": "Bob"
+                        }
+                    }
+                },
+                "2": {
+                    "Fields": {
+                        "id": {
+                            "Type": "string",
+                            "Value": "2"
+                        },
+                        "name": {
+                            "Type": "string",
+                            "Value": "John"
+                        }
+                    }
+                },
+                "5": {
+                    "Fields": {
+                        "id": {
+                            "Type": "string",
+                            "Value": "5"
+                        },
+                        "name": {
+                            "Type": "string",
+                            "Value": "Vlad"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
