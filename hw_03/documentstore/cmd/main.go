@@ -14,5 +14,5 @@ var firstDoc = documentstore.Document{
 func main() {
 	documentstore.Put(firstDoc) // Додаємо документ
 
-	//fmt.Println(documentstore.documents["first"]) // так не можно добратися до змінної бо вона не доступна бо з малої літери
+	//fmt.Println(document_store.documents["first"]) // так не можно добратися до змінної бо вона не доступна бо з малої літери
 }
