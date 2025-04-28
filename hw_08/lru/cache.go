@@ -19,8 +19,8 @@ type CustomLRUCache struct {
 	items    map[string]*list.Element
 }
 
-func NewLruCache(capacity int) CustomLRUCache {
-	return CustomLRUCache{
+func NewLruCache(capacity int) *CustomLRUCache {
+	return &CustomLRUCache{
 		capacity: capacity,
 		queue:    list.New(),
 		items:    make(map[string]*list.Element),
@@ -34,7 +34,7 @@ func (c *CustomLRUCache) Put(key, value string) {
 		return
 	}
 	if c.queue.Len() == c.capacity {
-		c.clear()
+		c.removeOldest()
 	}
 	item := c.queue.PushFront(&Item{Key: key, Value: value})
 	c.items[key] = item
@@ -50,8 +50,16 @@ func (c *CustomLRUCache) Get(key string) (string, bool) {
 	return "", false
 }
 
-func (c *CustomLRUCache) clear() {
+func (c *CustomLRUCache) removeOldest() {
+	if c.queue == nil || c.queue.Len() == 0 {
+		return
+	}
 	item := c.queue.Back()
+	if item == nil {
+		return
+	}
 	c.queue.Remove(item)
-	delete(c.items, item.Value.(*Item).Key)
+	if item.Value != nil {
+		delete(c.items, item.Value.(*Item).Key)
+	}
 }
