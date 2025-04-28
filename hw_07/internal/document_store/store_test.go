@@ -1,6 +1,7 @@
 package document_store
 
 import (
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -9,43 +10,31 @@ func TestStore_CreateAndGetCollection(t *testing.T) {
 	store := NewStore()
 
 	ok, col := store.CreateCollection("users", &CollectionConfig{PrimaryKey: "id"})
-	if !ok || col == nil {
-		t.Fatal("expected collection to be created")
-	}
+	assert.True(t, ok, "expected collection to be created")
+	assert.NotNil(t, col, "expected created collection not to be nil")
 
 	col2, found := store.GetCollection("users")
-	if !found || col2 == nil {
-		t.Fatal("expected to find collection")
-	}
+	assert.True(t, found, "expected to find collection")
+	assert.NotNil(t, col2, "expected found collection not to be nil")
 }
 
 func TestStore_CreateCollection_AlreadyExists(t *testing.T) {
 	store := NewStore()
-	store.CreateCollection("users", &CollectionConfig{PrimaryKey: "id"})
+	_, _ = store.CreateCollection("users", &CollectionConfig{PrimaryKey: "id"})
 
 	ok, col := store.CreateCollection("users", &CollectionConfig{PrimaryKey: "id"})
-	if ok || col != nil {
-		t.Fatal("expected collection not to be created again")
-	}
+	assert.False(t, ok, "expected collection not to be created again")
+	assert.Nil(t, col, "expected no collection to be returned on duplicate create")
 }
 
 func TestStore_DeleteCollection(t *testing.T) {
 	store := NewStore()
 	store.CreateCollection("test", &CollectionConfig{PrimaryKey: "id"})
 
-	ok := store.DeleteCollection("test")
-	if !ok {
-		t.Fatal("expected deletion to succeed")
-	}
-
+	assert.True(t, store.DeleteCollection("test"), "expected deletion to succeed")
 	_, found := store.GetCollection("test")
-	if found {
-		t.Fatal("expected collection to be deleted")
-	}
-
-	if store.DeleteCollection("nonexistent") {
-		t.Fatal("expected deletion of nonexistent collection to fail")
-	}
+	assert.False(t, found, "expected collection to be deleted")
+	assert.False(t, store.DeleteCollection("nonexistent"), "expected deletion of nonexistent collection to fail")
 }
 
 func TestStore_DumpAndLoad(t *testing.T) {
@@ -57,24 +46,17 @@ func TestStore_DumpAndLoad(t *testing.T) {
 	}})
 
 	dump, err := store.Dump()
-	if err != nil {
-		t.Fatalf("expected dump to succeed, got error: %v", err)
-	}
+	assert.NoError(t, err, "expected dump to succeed")
 
 	newStore, err := NewStoreFromDump(dump)
-	if err != nil {
-		t.Fatalf("expected unmarshal from dump to succeed, got error: %v", err)
-	}
+	assert.NoError(t, err, "expected unmarshal from dump to succeed")
 
 	loadedCol, ok := newStore.GetCollection("docs")
-	if !ok {
-		t.Fatal("expected to find collection after unmarshal")
-	}
+	assert.True(t, ok, "expected to find collection after unmarshal")
 
 	doc, found := loadedCol.Get("1")
-	if !found || doc.Fields["name"].Value != "Alice" {
-		t.Fatal("expected to find document with correct value")
-	}
+	assert.True(t, found, "expected to find document with correct value")
+	assert.Equal(t, "Alice", doc.Fields["name"].Value, "expected document to have correct name")
 }
 
 func TestStore_DumpToFile_And_NewStoreFromFile(t *testing.T) {
@@ -87,24 +69,17 @@ func TestStore_DumpToFile_And_NewStoreFromFile(t *testing.T) {
 		"id":  {Type: DocumentFieldTypeString, Value: "log1"},
 		"msg": {Type: DocumentFieldTypeString, Value: "Hello"},
 	}})
-
+	
 	err := store.DumpToFile(filename)
-	if err != nil {
-		t.Fatalf("expected dump to file to succeed, got: %v", err)
-	}
+	assert.NoError(t, err, "expected dump to file to succeed")
 
 	loadedStore, err := NewStoreFromFile(filename)
-	if err != nil {
-		t.Fatalf("expected load from file to succeed, got: %v", err)
-	}
+	assert.NoError(t, err, "expected load from file to succeed")
 
 	loadedCol, ok := loadedStore.GetCollection("logs")
-	if !ok {
-		t.Fatal("expected to find loaded collection")
-	}
+	assert.True(t, ok, "expected to find loaded collection")
 
 	doc, found := loadedCol.Get("log1")
-	if !found || doc.Fields["msg"].Value != "Hello" {
-		t.Fatalf("expected document with correct msg field, got: %v", doc.Fields["msg"].Value)
-	}
+	assert.True(t, found, "expected to find document with correct msg field")
+	assert.Equal(t, "Hello", doc.Fields["msg"].Value, "expected document to have correct msg field")
 }
