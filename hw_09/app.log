@@ -1,0 +1,4 @@
+time=2025-04-28T11:26:41.238+03:00 level=INFO msg="New document_store created"
+time=2025-04-28T11:26:41.240+03:00 level=INFO msg="Msg: collection already exists"
+time=2025-04-28T11:27:00.643+03:00 level=INFO msg="New document_store created"
+time=2025-04-28T11:27:00.644+03:00 level=INFO msg="Msg: collection already exists"
