@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	store := documentstore.NewStore() // create store
-	fmt.Printf("New store created %v\n", store)
+	store := documentstore.NewStore() // create document_store
+	fmt.Printf("New document_store created %v\n", store)
 
 	cfg := &documentstore.CollectionConfig{
 		PrimaryKey: "pk",
