@@ -9,35 +9,35 @@ import (
 )
 
 type Store struct {
-	Storage map[string]*Collection `json:"storage"`
+	storage map[string]*Collection
 }
 
 func NewStore() *Store {
 	return &Store{
-		Storage: make(map[string]*Collection),
+		storage: make(map[string]*Collection),
 	}
 
 }
 
 func (s *Store) CreateCollection(name string, cfg *CollectionConfig) (bool, *Collection) {
-	_, ok := s.Storage[name]
+	_, ok := s.storage[name]
 	if ok {
 		return false, nil
 	}
 	collection := NewCollection(*cfg)
-	s.Storage[name] = collection
+	s.storage[name] = collection
 	return true, collection
 }
 
 func (s *Store) GetCollection(name string) (*Collection, bool) {
-	collection, ok := s.Storage[name]
+	collection, ok := s.storage[name]
 	return collection, ok
 }
 
 func (s *Store) DeleteCollection(name string) bool {
-	_, ok := s.Storage[name]
+	_, ok := s.storage[name]
 	if ok {
-		delete(s.Storage, name)
+		delete(s.storage, name)
 
 		return true
 	}
@@ -47,7 +47,11 @@ func (s *Store) DeleteCollection(name string) bool {
 
 func (s *Store) Dump() ([]byte, error) {
 	// Методи повинен віддати дамп нашого стору в який включені дані про колекції та документ
-	sBytes, err := json.Marshal(s)
+	sBytes, err := json.Marshal(&struct {
+		Storage map[string]*Collection `json:"storage"`
+	}{
+		Storage: s.storage,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrMarshalJSONFailed, err)
 	}
@@ -55,7 +59,11 @@ func (s *Store) Dump() ([]byte, error) {
 }
 
 func (s *Store) DumpToFile(filename string) error {
-	jsonBytes, err := json.MarshalIndent(s, "", "    ")
+	jsonBytes, err := json.MarshalIndent(&struct {
+		Storage map[string]*Collection `json:"storage"`
+	}{
+		Storage: s.storage,
+	}, "", "    ")
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrMarshalJSONFailed, err)
 	}
@@ -74,10 +82,14 @@ func (s *Store) DumpToFile(filename string) error {
 }
 func NewStoreFromDump(dump []byte) (*Store, error) {
 	store := &Store{}
-	err := json.Unmarshal(dump, store)
+	aux := &struct {
+		Storage map[string]*Collection `json:"storage"`
+	}{}
+	err := json.Unmarshal(dump, aux)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnmarshalJSONFailed, err)
 	}
+	store.storage = aux.Storage
 	return store, nil
 }
 func NewStoreFromFile(filename string) (*Store, error) {
