@@ -7,8 +7,9 @@ import (
 )
 
 type Index struct {
-	fieldName string
-	values    map[string][]string
+	fieldName  string
+	values     map[string]map[string]struct{}
+	sortedKeys []string
 }
 
 type Collection struct {
@@ -91,14 +92,16 @@ func (c *Collection) List() []Document {
 }
 
 type serializedIndex struct {
-	FieldName string              `json:"fieldName"`
-	Values    map[string][]string `json:"values"`
+	FieldName  string                         `json:"fieldName"`
+	Values     map[string]map[string]struct{} `json:"values"`
+	SortedKeys []string                       `json:"sortedKeys"`
 }
 
 func (idx *Index) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&serializedIndex{
-		FieldName: idx.fieldName,
-		Values:    idx.values,
+		FieldName:  idx.fieldName,
+		Values:     idx.values,
+		SortedKeys: idx.sortedKeys,
 	})
 }
 
@@ -109,6 +112,7 @@ func (idx *Index) UnmarshalJSON(data []byte) error {
 	}
 	idx.fieldName = aux.FieldName
 	idx.values = aux.Values
+	idx.sortedKeys = aux.SortedKeys
 	return nil
 }
 
@@ -153,8 +157,9 @@ func (c *Collection) CreateIndex(fieldName string) error {
 		return ErrIndexAlreadyExists
 	}
 	index := &Index{
-		fieldName: fieldName,
-		values:    make(map[string][]string),
+		fieldName:  fieldName,
+		values:     make(map[string]map[string]struct{}),
+		sortedKeys: make([]string, 0),
 	}
 
 	for key, doc := range c.documents {
@@ -172,7 +177,11 @@ func (c *Collection) CreateIndex(fieldName string) error {
 			continue
 		}
 
-		index.values[strValue] = append(index.values[strValue], key)
+		if index.values[strValue] == nil {
+			index.values[strValue] = make(map[string]struct{})
+			index.sortedKeys = insertSorted(index.sortedKeys, strValue)
+		}
+		index.values[strValue][key] = struct{}{}
 	}
 
 	c.indexes[fieldName] = index
@@ -193,27 +202,13 @@ func (c *Collection) Query(fieldName string, params QueryParams) ([]Document, er
 	if !exists {
 		return nil, ErrIndexNotFound
 	}
-
-	values := make([]string, 0, len(index.values))
-	for value := range index.values {
-		values = append(values, value)
-	}
-
-	filteredValues := filterValues(values, params.MinValue, params.MaxValue)
-
-	if params.Desc {
-		sort.Sort(sort.Reverse(sort.StringSlice(filteredValues)))
-	} else {
-		sort.Strings(filteredValues)
-	}
+	values := filterSortedValues(index.sortedKeys, params.MinValue, params.MaxValue, params.Desc)
 
 	result := make([]Document, 0)
-	for _, value := range filteredValues {
+	for _, value := range values {
 		docKeys := index.values[value]
-
-		for _, key := range docKeys {
-			doc, exists := c.documents[key]
-			if exists {
+		for key := range docKeys {
+			if doc, exists := c.documents[key]; exists {
 				result = append(result, doc)
 			}
 		}
@@ -238,7 +233,11 @@ func (c *Collection) addDocumentToIndexes(key string, doc Document) {
 			continue
 		}
 
-		index.values[strValue] = append(index.values[strValue], key)
+		if _, exists := index.values[strValue]; !exists {
+			index.values[strValue] = make(map[string]struct{})
+		}
+
+		index.values[strValue][key] = struct{}{}
 	}
 }
 
@@ -246,46 +245,67 @@ func (c *Collection) removeDocumentFromIndexes(key string, doc Document) {
 	for fieldName, index := range c.indexes {
 		field, ok := doc.Fields[fieldName]
 		if !ok {
-			continue
+			continue // Якщо поле не знайдено, пропускаємо
 		}
 
 		if field.Type != DocumentFieldTypeString {
-			continue
+			continue // Якщо тип поля не є строковим, пропускаємо
 		}
 
 		strValue, ok := field.Value.(string)
 		if !ok {
-			continue
+			continue // Якщо значення поля не є рядком, пропускаємо
 		}
 
-		docKeys := index.values[strValue]
-		for i, docKey := range docKeys {
-			if docKey == key {
-				index.values[strValue] = append(docKeys[:i], docKeys[i+1:]...)
-				break
+		// Отримуємо map[string]struct{} для strValue
+		if docKeys, exists := index.values[strValue]; exists {
+			// Видаляємо переданий ключ із мапи
+			delete(docKeys, key)
+
+			// Якщо після видалення мапа стала порожньою, видаляємо значення strValue із загальної мапи
+			if len(docKeys) == 0 {
+				delete(index.values, strValue)
 			}
-		}
+			{
 
-		if len(index.values[strValue]) == 0 {
-			delete(index.values, strValue)
+			}
 		}
 	}
 }
 
-func filterValues(values []string, minValue, maxValue *string) []string {
-	if minValue == nil && maxValue == nil {
-		return values
+func filterSortedValues(values []string, minValue, maxValue *string, desc bool) []string {
+	start := 0
+	end := len(values)
+
+	if minValue != nil {
+		start = sort.Search(len(values), func(i int) bool {
+			return values[i] >= *minValue
+		})
 	}
 
-	filtered := make([]string, 0, len(values))
-	for _, v := range values {
-		if minValue != nil && v < *minValue {
-			continue
-		}
-		if maxValue != nil && v > *maxValue {
-			continue
-		}
-		filtered = append(filtered, v)
+	if maxValue != nil {
+		end = sort.Search(len(values), func(i int) bool {
+			return values[i] > *maxValue
+		})
 	}
-	return filtered
+
+	sliced := values[start:end]
+	if desc {
+		// Реверс без створення нового слайсу
+		for i, j := 0, len(sliced)-1; i < j; i, j = i+1, j-1 {
+			sliced[i], sliced[j] = sliced[j], sliced[i]
+		}
+	}
+	return sliced
+}
+
+func insertSorted(slice []string, value string) []string {
+	i := sort.SearchStrings(slice, value)
+	if i < len(slice) && slice[i] == value {
+		return slice // вже існує
+	}
+	slice = append(slice, "")
+	copy(slice[i+1:], slice[i:])
+	slice[i] = value
+	return slice
 }
