@@ -11,6 +11,7 @@ type Index struct {
 	fieldName  string
 	values     map[string]map[string]struct{}
 	sortedKeys []string
+	mu         sync.RWMutex
 }
 
 type Collection struct {
@@ -109,6 +110,9 @@ type serializedIndex struct {
 }
 
 func (idx *Index) MarshalJSON() ([]byte, error) {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+
 	return json.Marshal(&serializedIndex{
 		FieldName:  idx.fieldName,
 		Values:     idx.values,
@@ -121,6 +125,10 @@ func (idx *Index) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, aux); err != nil {
 		return err
 	}
+
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
 	idx.fieldName = aux.FieldName
 	idx.values = aux.Values
 	idx.sortedKeys = aux.SortedKeys
@@ -164,7 +172,9 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 }
 
 func (c *Collection) CreateIndex(fieldName string) error {
+	c.mu.Lock()
 	if _, exists := c.indexes[fieldName]; exists {
+		c.mu.Unlock()
 		return ErrIndexAlreadyExists
 	}
 	index := &Index{
@@ -173,13 +183,15 @@ func (c *Collection) CreateIndex(fieldName string) error {
 		sortedKeys: make([]string, 0),
 	}
 
-	for key, doc := range c.documents {
-		field, ok := doc.Fields[fieldName]
-		if !ok {
-			continue
-		}
+	documentsCopy := make(map[string]Document, len(c.documents))
+	for k, v := range c.documents {
+		documentsCopy[k] = v
+	}
+	c.mu.Unlock()
 
-		if field.Type != DocumentFieldTypeString {
+	for key, doc := range documentsCopy {
+		field, ok := doc.Fields[fieldName]
+		if !ok || field.Type != DocumentFieldTypeString {
 			continue
 		}
 
@@ -187,19 +199,24 @@ func (c *Collection) CreateIndex(fieldName string) error {
 		if !ok {
 			continue
 		}
-
+		index.mu.Lock()
 		if index.values[strValue] == nil {
 			index.values[strValue] = make(map[string]struct{})
 			index.sortedKeys = insertSorted(index.sortedKeys, strValue)
 		}
 		index.values[strValue][key] = struct{}{}
+		index.mu.Unlock()
 	}
 
+	c.mu.Lock()
 	c.indexes[fieldName] = index
+	c.mu.Unlock()
 	return nil
 }
 
 func (c *Collection) DeleteIndex(fieldName string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if _, exists := c.indexes[fieldName]; !exists {
 		return ErrIndexNotFound
 	}
@@ -209,13 +226,18 @@ func (c *Collection) DeleteIndex(fieldName string) error {
 }
 
 func (c *Collection) Query(fieldName string, params QueryParams) ([]Document, error) {
+	c.mu.RLock()
 	index, exists := c.indexes[fieldName]
+	c.mu.RUnlock()
 	if !exists {
 		return nil, ErrIndexNotFound
 	}
+	index.mu.RLock()
 	values := filterSortedValues(index.sortedKeys, params.MinValue, params.MaxValue, params.Desc)
-
+	index.mu.RUnlock()
 	result := make([]Document, 0)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for _, value := range values {
 		docKeys := index.values[value]
 		for key := range docKeys {
@@ -229,6 +251,7 @@ func (c *Collection) Query(fieldName string, params QueryParams) ([]Document, er
 }
 
 func (c *Collection) addDocumentToIndexes(key string, doc Document) {
+
 	for fieldName, index := range c.indexes {
 		field, ok := doc.Fields[fieldName]
 		if !ok {
@@ -243,44 +266,37 @@ func (c *Collection) addDocumentToIndexes(key string, doc Document) {
 		if !ok {
 			continue
 		}
-
+		index.mu.Lock()
 		if _, exists := index.values[strValue]; !exists {
 			index.values[strValue] = make(map[string]struct{})
 		}
 
 		index.values[strValue][key] = struct{}{}
+		index.mu.Unlock()
 	}
 }
 
 func (c *Collection) removeDocumentFromIndexes(key string, doc Document) {
+
 	for fieldName, index := range c.indexes {
 		field, ok := doc.Fields[fieldName]
-		if !ok {
-			continue // Якщо поле не знайдено, пропускаємо
-		}
-
-		if field.Type != DocumentFieldTypeString {
-			continue // Якщо тип поля не є строковим, пропускаємо
+		if !ok || field.Type != DocumentFieldTypeString {
+			continue
 		}
 
 		strValue, ok := field.Value.(string)
 		if !ok {
-			continue // Якщо значення поля не є рядком, пропускаємо
+			continue
 		}
 
-		// Отримуємо map[string]struct{} для strValue
+		index.mu.Lock()
 		if docKeys, exists := index.values[strValue]; exists {
-			// Видаляємо переданий ключ із мапи
 			delete(docKeys, key)
-
-			// Якщо після видалення мапа стала порожньою, видаляємо значення strValue із загальної мапи
 			if len(docKeys) == 0 {
 				delete(index.values, strValue)
 			}
-			{
-
-			}
 		}
+		index.mu.Unlock()
 	}
 }
 
@@ -302,7 +318,6 @@ func filterSortedValues(values []string, minValue, maxValue *string, desc bool) 
 
 	sliced := values[start:end]
 	if desc {
-		// Реверс без створення нового слайсу
 		for i, j := 0, len(sliced)-1; i < j; i, j = i+1, j-1 {
 			sliced[i], sliced[j] = sliced[j], sliced[i]
 		}

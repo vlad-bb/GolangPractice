@@ -94,7 +94,6 @@ func (s *Store) DumpToFile(filename string) error {
 	return nil
 }
 func NewStoreFromDump(dump []byte) (*Store, error) {
-	store := &Store{}
 	aux := &struct {
 		Storage map[string]*Collection `json:"storage"`
 	}{}
@@ -102,7 +101,10 @@ func NewStoreFromDump(dump []byte) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnmarshalJSONFailed, err)
 	}
-	store.storage = aux.Storage
+	store := &Store{
+		storage: aux.Storage,
+		mu:      sync.RWMutex{},
+	}
 	return store, nil
 }
 func NewStoreFromFile(filename string) (*Store, error) {

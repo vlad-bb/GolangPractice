@@ -15,6 +15,32 @@ func newTestDocument(id, name string) Document {
 	}
 }
 
+func TestCollection_Indexing(t *testing.T) {
+	c := NewCollection(CollectionConfig{PrimaryKey: "id"})
+
+	// Додати індекс за полем "name"
+	c.indexes["name"] = &Index{
+		values: make(map[string]map[string]struct{}),
+	}
+
+	// Додати документ
+	doc := newTestDocument("42", "John")
+	err := c.Put(doc)
+	assert.NoError(t, err)
+
+	// Перевірити, чи індекс "name" містить "John" -> "42"
+	index, exists := c.indexes["name"]
+	assert.True(t, exists, "index 'name' should exist")
+
+	index.mu.RLock()
+	defer index.mu.RUnlock()
+
+	docKeys, ok := index.values["John"]
+	assert.True(t, ok, "index for 'John' should exist")
+	_, keyExists := docKeys["42"]
+	assert.True(t, keyExists, "document ID should be indexed under 'John'")
+}
+
 func TestCollection_PutAndGet(t *testing.T) {
 	c := NewCollection(CollectionConfig{PrimaryKey: "id"})
 
