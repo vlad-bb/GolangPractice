@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 )
 
 var logger = llogger.SetupLogger()
@@ -33,9 +34,19 @@ func main() {
 	for us.Scan() {
 		msg := us.Text()
 
-		fmt.Printf("User Input: %s\n", msg)
+		elems := strings.SplitN(msg, " ", 2)
+		cmd := elems[0]
 
-		sw.WriteString(base64.StdEncoding.EncodeToString([]byte(msg)) + "\n")
+		var payload string
+		if len(elems) > 1 {
+			// Тільки payload кодуємо в base64
+			payload = base64.StdEncoding.EncodeToString([]byte(elems[1]))
+			sw.WriteString(fmt.Sprintf("%s %s\n", cmd, payload))
+		} else {
+			// Команди без payload (наприклад, list, exit)
+			sw.WriteString(fmt.Sprintf("%s\n", cmd))
+		}
+
 		sw.Flush()
 
 		resp, err := sr.ReadString('\n')

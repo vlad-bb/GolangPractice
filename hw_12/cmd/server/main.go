@@ -19,6 +19,8 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 )
 
+var store = document_store.NewStore()
+
 var logger = llogger.SetupLogger()
 
 func execPut(raw string, rs like_mongo.Service) (string, error) {
@@ -125,8 +127,6 @@ func handleConnection(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	w := bufio.NewWriter(conn)
 
-	var store = document_store.NewStore()
-
 	gofakeit.Seed(0)
 	name := gofakeit.Word()
 	var rs = like_mongo.CreateService(store, "key", name)
@@ -134,10 +134,21 @@ func handleConnection(conn net.Conn) {
 	for scanner.Scan() {
 		msg := scanner.Text()
 
-		req, _ := base64.StdEncoding.DecodeString(msg)
-		elems := strings.Split(string(req), " ")
+		elems := strings.SplitN(msg, " ", 2)
+		cmd := elems[0]
 
-		if string(req) == _const.Exit {
+		var payload string
+		if len(elems) > 1 {
+			decoded, err := base64.StdEncoding.DecodeString(elems[1])
+			if err != nil {
+				w.WriteString("error decoding base64 payload\n")
+				w.Flush()
+				continue
+			}
+			payload = string(decoded)
+		}
+
+		if cmd == _const.Exit {
 			w.WriteString(_const.ExitMsg)
 			w.Flush()
 			return
@@ -152,15 +163,19 @@ func handleConnection(conn net.Conn) {
 		var resp string
 		var err error
 
-		switch elems[0] {
+		switch cmd {
 		case cmds.PutCommandName:
-			resp, err = execPut(elems[1], rs)
+			resp, err = execPut(payload, rs)
 		case cmds.GetCommandName:
-			resp, err = execGet(elems[1], rs)
+			resp, err = execGet(payload, rs)
 		case cmds.DeleteCommandName:
-			resp, err = execDelete(elems[1], rs)
+			resp, err = execDelete(payload, rs)
 		case cmds.ListCommandName:
 			resp, err = execList(rs)
+		case _const.Exit:
+			w.WriteString(_const.ExitMsg)
+			w.Flush()
+			return
 		default:
 			resp, err = execInvalidCommand("invalid command\n" + _const.HelpText)
 		}
