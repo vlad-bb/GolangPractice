@@ -4,8 +4,10 @@ WORKDIR /work
 
 COPY cmd cmd
 COPY internal internal
-COPY go.mod go.mod
-COPY go.sum go.sum
+COPY go.mod go.sum ./
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    go mod download
 
 ENV CGO_ENABLED=0
 #ENV GOOS=darwin
